@@ -3,7 +3,7 @@
  * PhantomJS-based web performance metrics collector
  *
  * Usage:
- *  ./phantomas.js
+ *  ./speedreport.js
  *    --url=<page to check>
  *    [--timeout=5]
  *    [--format=json|html]
@@ -18,7 +18,7 @@
 // parse script arguments
 var args = require('system').args,
     params = require('./lib/args').parse(args),
-    speedreport = require('./core/speedreport'),
+    speedreport = require('./core/netsniff.js'),
     time=Date.now(),
     instance;
 params.time=Date.now();
@@ -26,8 +26,8 @@ params.time=Date.now();
 //instance = new phantomas(params);
 
 try {
-    speedreport.run(params, function(data){
-        console.log(data);
+    speedreport.run(params, function(data, formatted){
+        console.log(formatted);
         phantom.exit();
     });
 }
