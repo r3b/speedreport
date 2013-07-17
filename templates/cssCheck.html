@@ -49,12 +49,6 @@
 		right:0px;
 	}
 </style>
-<br/>
-<div id="contentBubblesContainer">
-	<h3>Size and content type</h3>
-	<div id="contentBubbles">
-	</div>
-</div>
 <script>
 	var data={DATA};
 	var matchedByStylesheet=data.matched.reduce(function(p,c,i,a){
@@ -79,26 +73,33 @@
 	}, {})
 	var matchedByStylesheetArray=Object.keys(matchedByStylesheet).map(function(s){
 		var obj=matchedByStylesheet[s];
-		s=(/\//.test(s))?s.substring(s.lastIndexOf('/')+1):s;
-		obj.label=s+" (matched)";
+		var m=/.*\/([^&#?]+)[^&#?]?/.exec(s);
+		if(m && m.length)s=m[1];
+		//s=(/\//.test(s))?s.substring(s.lastIndexOf('/')+1):s;
+		obj.label=s+' '+obj.count+' ('+Math.round(obj.percent*100)+'%)';
+		obj.matched=true;
 		return obj;
 	}).concat(Object.keys(unmatchedByStylesheet).map(function(s){
 		var obj=unmatchedByStylesheet[s];
-		s=(/\//.test(s))?s.substring(s.lastIndexOf('/')+1):s;
-		obj.label=s+" (unmatched)";
+		var m=/.*\/([^&#?]+)[^&#?]?/.exec(s);
+		if(m && m.length)s=m[1];
+		obj.label=s+' '+obj.count+' ('+Math.round(obj.percent*100)+'%)';
+		obj.matched=false;
 		return obj;
-	})).sort(function(a,b){return b.count-a.count});
+	}));
 </script>
 <script>
-	function pieChart(data, valueFunction, labelFunction, target){
+	function pieChart(data, valueFunction, labelFunction, innerLabelFunction, target){
 		/**! Pie Chart functionality copied almost entirely from https://gist.github.com/enjalot/1203641 */
 		if(target===undefined)target="body";
 		if(valueFunction===undefined)valueFunction=function(d) { return d.value; };
 		if(labelFunction===undefined)valueFunction=function(d, i) { return data[i].label; };
-		var w = 300,                        //width
-		    h = 300,                            //height
-		    r = 100,                            //radius
-		    color = d3.scale.category20c();     //builtin range of colors		
+		var w = 600,                        //width
+		    h = 600,                            //height
+		    r = 200,                            //radius
+		    color = d3.scale.category20c(),    //builtin range of colors
+		    matchedColors = d3.scale.linear().domain([1,10]).range(['blue', 'darkblue']),
+		    unmatchedColors = d3.scale.linear().domain([1,10]).range(['red', 'darkred']);
 	    var arc = d3.svg.arc()              //this will create <path> elements for us using arc data
 	        .outerRadius(r);
 	 
@@ -118,30 +119,35 @@
 	            .append("svg:g")                //create a group to hold each slice (we will have a <path> and a <text> element associated with each slice)
 	                .attr("class", "slice");    //allow us to style things in the slices (like text)
 	 
-	        arcs.append("svg:path")
-	                .attr("fill", function(d, i) { return color(i); } ) //set the color for each slice to be chosen from the color function defined above
-	                .attr("d", arc);                                    //this creates the actual SVG path using the associated data (pie) with the arc drawing function
-	 
-	        arcs.append("svg:text")                                     //add a label to each slice
-	                .attr("transform", function(d,i) {                    //set the label's origin to the center of the arc
-		                //we have to make sure to set these before calling arc.centroid
-		                d.innerRadius = (i%2)?0:r/2;
-		                d.outerRadius = r;
-		                return "translate(" + arc.centroid(d) + ")";        //this gives us a pair of coordinates like [50, 50]
-		            })
-		            .attr("text-anchor", function(d,i){return (i%2)?"start":"middle"})//center the text on it's origin
-		            .text(labelFunction);        //get the label from our original data array	 
+        arcs.append("svg:path")
+                .attr("fill", function(d, i) { return (d.data.matched===true)?matchedColors(i):unmatchedColors(i); } ) //set the color for each slice to be chosen from the color function defined above
+                .attr("d", arc);                                    //this creates the actual SVG path using the associated data (pie) with the arc drawing function
+ 
+        arcs.filter(function(d) { return d.endAngle - d.startAngle > .2; }).append("svg:text")                                     //add a label to each slice
+                .attr("transform", function(d,i) {                    //set the label's origin to the center of the arc
+	                //we have to make sure to set these before calling arc.centroid
+	                d.innerRadius = 10;
+	                d.outerRadius = r-10;
+	                return "translate(" + arc.centroid(d) + ")rotate(" + angle(d) + ")";        //this gives us a pair of coordinates like [50, 50]
+	            })
+	            .attr("text-anchor", "middle")//center the text on it's origin
+				.style("fill", "White")
+				.style("font", "bold 12px Arial")
+	            .text(labelFunction);        //get the label from our original data array	 
 
-	}
+	    // Computes the angle of an arc, converting from radians to degrees.
+	    function angle(d) {
+	      var a = (d.startAngle + d.endAngle) * 90 / Math.PI - 90;
+	      return a > 90 ? a - 180 : a;
+	    }
+  	}
 </script>
 <script>
 	pieChart(
 		matchedByStylesheetArray, 
-		function(d) { return d.rules.length; },
-		function(d, i) {
-
-			return d.data.label;
-		}
+		function(d) { return d.rules.length;},
+		function(d, i) {return d.data.label;},
+		function(d, i) {return d.data.count+' ('+Math.round(d.data.percent*100)+'%)';}
 	);
 </script>
 </body>
