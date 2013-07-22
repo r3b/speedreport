@@ -1,154 +1,81 @@
 <!doctype html>
 <html>
 <head>
-	<meta http-equiv="X-UA-Compatible" content="IE=9;IE=8;IE=7;">
 	<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
-	<!-- Le styles -->
-	<link href="http://loadreport.wesleyhales.com/bootstrap/css/bootstrap.css" rel="stylesheet">
-	<style>
-		body {
-			padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
-		}
-	</style>
-	<link href="http://loadreport.wesleyhales.com/bootstrap/css/bootstrap-responsive.css" rel="stylesheet">
-
-	<!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
-	<!--[if lt IE 9]>
-	<script type="text/javascript" src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
-	<![endif]-->
 </head>
 <body>
-<style>
-	div.tooltip,div.tooltipBubble {
-		position: absolute;
-		overflow:hidden;
-		text-align: left;
-		width: 300px;
-		height: 120px;
-		padding: 2px;
-		font: 12px sans-serif;
-		background: lightsteelblue;
-		border: 0px;
-		border-radius: 8px;
-		pointer-events: none;
-	}
-	div#contentBubblesContainer{
-		width:350px;
-		position:relative;
-		float:left;
-	}
-	div#barGraphContainer{
-		width:600px;
-		position:relative;
-		margin-right: 10px;
-		float:left;
-	}
-	svg.legend{
-		position:absolute;
-		top:100px;
-		right:0px;
-	}
-</style>
-<script>
-	var data={DATA};
-	var matchedByStylesheet=data.matched.reduce(function(p,c,i,a){
-		if(!(c.stylesheet in p)){
-			p[c.stylesheet]={rules:[],count:0,percent:0};
+	<div id="container"></div>
+	<script>
+		var data={DATA};
+	</script>
+	<script>
+		var matchedByStylesheet=data.matched.reduce(function(p,c,i,a){
+			if(!(c.stylesheet in p)){
+				p[c.stylesheet]={rules:[],count:0,percent:0};
+			}
+			p[c.stylesheet].rules.push(c);
+			p[c.stylesheet].count=p[c.stylesheet].rules.length;
+			p[c.stylesheet].percent=p[c.stylesheet].count/data.rules;
+			p[c.stylesheet].percentOfStatus=p[c.stylesheet].count/data.matched.length;
+			return p;
+		}, {});
+		var unmatchedByStylesheet=data.unmatched.reduce(function(p,c,i,a){
+			if(!(c.stylesheet in p)){
+				p[c.stylesheet]={rules:[],count:0,percent:0};
+			}
+			p[c.stylesheet].rules.push(c);
+			p[c.stylesheet].count=p[c.stylesheet].rules.length;
+			p[c.stylesheet].percent=p[c.stylesheet].count/data.rules;
+			p[c.stylesheet].percentOfStatus=p[c.stylesheet].count/data.unmatched.length;
+			return p;
+		}, {})
+		var matchedByStylesheetArray=Object.keys(matchedByStylesheet).map(function(s){
+			var obj=matchedByStylesheet[s];
+			var m=/.*\/([^&#?]+)[^&#?]?/.exec(s);
+			if(m && m.length)s=m[1];
+			obj.label=s+' '+obj.count+' ('+Math.round(obj.percent*100)+'%)';
+			obj.matched=true;
+			return obj;
+		}).concat(Object.keys(unmatchedByStylesheet).map(function(s){
+			var obj=unmatchedByStylesheet[s];
+			var m=/.*\/([^&#?]+)[^&#?]?/.exec(s);
+			if(m && m.length)s=m[1];
+			obj.label=s+' '+obj.count+' ('+Math.round(obj.percent*100)+'%)';
+			obj.matched=false;
+			return obj;
+		}));
+	</script>
+	<script>
+		function angle(d) {
+			var a = (d.startAngle + d.endAngle) * 90 / Math.PI - 90;
+			return a > 90 ? a - 180 : a;
 		}
-		p[c.stylesheet].rules.push(c);
-		p[c.stylesheet].count=p[c.stylesheet].rules.length;
-		p[c.stylesheet].percent=p[c.stylesheet].count/data.rules;
-		p[c.stylesheet].percentOfStatus=p[c.stylesheet].count/data.matched.length;
-		return p;
-	}, {});
-	var unmatchedByStylesheet=data.unmatched.reduce(function(p,c,i,a){
-		if(!(c.stylesheet in p)){
-			p[c.stylesheet]={rules:[],count:0,percent:0};
-		}
-		p[c.stylesheet].rules.push(c);
-		p[c.stylesheet].count=p[c.stylesheet].rules.length;
-		p[c.stylesheet].percent=p[c.stylesheet].count/data.rules;
-		p[c.stylesheet].percentOfStatus=p[c.stylesheet].count/data.unmatched.length;
-		return p;
-	}, {})
-	var matchedByStylesheetArray=Object.keys(matchedByStylesheet).map(function(s){
-		var obj=matchedByStylesheet[s];
-		var m=/.*\/([^&#?]+)[^&#?]?/.exec(s);
-		if(m && m.length)s=m[1];
-		//s=(/\//.test(s))?s.substring(s.lastIndexOf('/')+1):s;
-		obj.label=s+' '+obj.count+' ('+Math.round(obj.percent*100)+'%)';
-		obj.matched=true;
-		return obj;
-	}).concat(Object.keys(unmatchedByStylesheet).map(function(s){
-		var obj=unmatchedByStylesheet[s];
-		var m=/.*\/([^&#?]+)[^&#?]?/.exec(s);
-		if(m && m.length)s=m[1];
-		obj.label=s+' '+obj.count+' ('+Math.round(obj.percent*100)+'%)';
-		obj.matched=false;
-		return obj;
-	}));
-</script>
-<script>
-	function pieChart(data, valueFunction, labelFunction, innerLabelFunction, target){
-		/**! Pie Chart functionality copied almost entirely from https://gist.github.com/enjalot/1203641 */
-		if(target===undefined)target="body";
-		if(valueFunction===undefined)valueFunction=function(d) { return d.value; };
-		if(labelFunction===undefined)valueFunction=function(d, i) { return data[i].label; };
-		var w = 600,                        //width
-		    h = 600,                            //height
-		    r = 200,                            //radius
-		    color = d3.scale.category20c(),    //builtin range of colors
-		    matchedColors = d3.scale.linear().domain([1,10]).range(['blue', 'darkblue']),
-		    unmatchedColors = d3.scale.linear().domain([1,10]).range(['red', 'darkred']);
-	    var arc = d3.svg.arc()              //this will create <path> elements for us using arc data
-	        .outerRadius(r);
-	 
-	    var pie = d3.layout.pie()           //this will create arc data for us given a list of values
-	        .value(valueFunction);    //we must tell it out to access the value of each element in our data array	}
-	        //.value(function(d) { return d.value; });    //we must tell it out to access the value of each element in our data array	}
-		var vis = d3.select(target)
-	        .append("svg:svg")              //create the SVG element inside the target
-	        .data([data])                   //associate our data with the document
-	            .attr("width", w)           //set the width and height of our visualization (these will be attributes of the <svg> tag
-	            .attr("height", h)
-	        .append("svg:g")                //make a group to hold our pie chart
-	            .attr("transform", "translate(" + r + "," + r + ")")    //move the center of the pie chart from 0, 0 to radius, radius
-		var arcs = vis.selectAll("g.slice")     //this selects all <g> elements with class slice (there aren't any yet)
-	        .data(pie)                          //associate the generated pie data (an array of arcs, each having startAngle, endAngle and value properties) 
-	        .enter()                            //this will create <g> elements for every "extra" data element that should be associated with a selection. The result is creating a <g> for every object in the data array
-	            .append("svg:g")                //create a group to hold each slice (we will have a <path> and a <text> element associated with each slice)
-	                .attr("class", "slice");    //allow us to style things in the slices (like text)
-	 
-        arcs.append("svg:path")
-                .attr("fill", function(d, i) { return (d.data.matched===true)?matchedColors(i):unmatchedColors(i); } ) //set the color for each slice to be chosen from the color function defined above
-                .attr("d", arc);                                    //this creates the actual SVG path using the associated data (pie) with the arc drawing function
- 
-        arcs.filter(function(d) { return d.endAngle - d.startAngle > .2; }).append("svg:text")                                     //add a label to each slice
-                .attr("transform", function(d,i) {                    //set the label's origin to the center of the arc
-	                //we have to make sure to set these before calling arc.centroid
-	                d.innerRadius = 10;
-	                d.outerRadius = r-10;
-	                return "translate(" + arc.centroid(d) + ")rotate(" + angle(d) + ")";        //this gives us a pair of coordinates like [50, 50]
-	            })
-	            .attr("text-anchor", "middle")//center the text on it's origin
-				.style("fill", "White")
-				.style("font", "bold 12px Arial")
-	            .text(labelFunction);        //get the label from our original data array	 
-
-	    // Computes the angle of an arc, converting from radians to degrees.
-	    function angle(d) {
-	      var a = (d.startAngle + d.endAngle) * 90 / Math.PI - 90;
-	      return a > 90 ? a - 180 : a;
-	    }
-  	}
-</script>
-<script>
-	pieChart(
-		matchedByStylesheetArray, 
-		function(d) { return d.rules.length;},
-		function(d, i) {return d.data.label;},
-		function(d, i) {return d.data.count+' ('+Math.round(d.data.percent*100)+'%)';}
-	);
-</script>
+		function pieChart(data, valueFunction, labelFunction, innerLabelFunction, target){
+			/**! Pie Chart functionality copied almost entirely from https://gist.github.com/enjalot/1203641 */
+			if(target===undefined)target="body";
+			if(valueFunction===undefined)valueFunction=function(d) { return d.value; };
+			if(labelFunction===undefined)valueFunction=function(d, i) { return data[i].label; };
+			var w = 600, h = 600, r = 200, color = d3.scale.category20c(), 
+				matchedColors = d3.scale.linear().domain([1,10]).range(['blue', 'darkblue']), 
+				unmatchedColors = d3.scale.linear().domain([1,10]).range(['red', 'darkred']);
+		    var arc = d3.svg.arc().outerRadius(r);
+		    var pie = d3.layout.pie().value(valueFunction);
+			var vis = d3.select(target).append("svg:svg").data([data]).attr("width", w).attr("height", h).append("svg:g").attr("transform", "translate(" + r + "," + r + ")");
+			var arcs = vis.selectAll("g.slice").data(pie).enter().append("svg:g").attr("class", "slice");
+	        arcs.append("svg:path").attr("fill", function(d, i) { return (d.data.matched===true)?matchedColors(i):unmatchedColors(i); } ).attr("d", arc);                                    //this creates the actual SVG path using the associated data (pie) with the arc drawing function
+	        arcs.filter(function(d) { return d.endAngle - d.startAngle > .2; }).append("svg:text")
+	                .attr("transform", function(d,i) {d.innerRadius = 10;d.outerRadius = r-10;return "translate(" + arc.centroid(d) + ")rotate(" + angle(d) + ")";})
+		            .attr("text-anchor", "middle").style("fill", "White").style("font", "bold 12px Arial").text(labelFunction);
+	  	}
+	</script>
+	<script>
+		pieChart(
+			matchedByStylesheetArray, 
+			function(d) { return d.rules.length},
+			function(d, i) {return d.data.label},
+			function(d, i) {return d.data.count+' ('+Math.round(d.data.percent*100)+'%)'},
+        	'#container'
+		);
+	</script>
 </body>
 </html>

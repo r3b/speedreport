@@ -18,12 +18,12 @@ function run(params, callback){
                                     unmatched.push({rule:rule.selectorText, matches:0, stylesheet:styleSheet.href||'embedded'})
                                 }
                             }catch(e){
-                                console.error('<!--', rule.selectorText, e, '-->');
+                                //console.error('<!--', rule.selectorText, e, '-->');
                             }
                             ruleCount++;
                         })
                     }catch(e1){
-                        console.error('<!--', styleSheet.href, e1, '-->');
+                        //console.error('<!--', styleSheet.href, e1, '-->');
                     }
                 }
                 sheetCount++;
@@ -31,12 +31,10 @@ function run(params, callback){
             return {sheets:sheetCount,rules:ruleCount, unmatched:unmatched, matched:matched}
         });
         data=JSON.stringify(pageInfo, undefined, 4)
-        pageInfo
         //console.log(data);
         formatted=format('templates/cssCheck.html', {DATA:data});
         //console.log(formatted);
-        return (callback && "function" === typeof callback)?callback(data, formatted):data
-        phantom.exit(1);
+        return (callback && "function" === typeof callback)?callback(data, formatted):data;
     });
 }
 function format(file, data){
@@ -51,6 +49,8 @@ function format(file, data){
     }
     return whiskers.render(template, data);
 }
+
+
 
 exports.version="0.0.1";
 exports.run=run;
