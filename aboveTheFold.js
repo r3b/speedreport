@@ -25,7 +25,7 @@ try {
 	aboveTheFold.run(params, function(data, formatted){
 	    console.log("//total styles: "+data.matched.length);
 	    data.matched.forEach(function(rule){
-	    	console.log("//from: "+rule.stylesheet)
+	    	//console.log("//from: "+rule.stylesheet)
 	    	console.log(rule.text);
 	    });
 	    phantom.exit();

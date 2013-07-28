@@ -17,22 +17,22 @@ function run(params, callback) {
 				var sheetCount=0,ruleCount=0, matched=[], matches;
 				Array.prototype.slice.apply(document.styleSheets).forEach(function(styleSheet){
 					if(styleSheet.cssRules){
-						try{
+						//try{
 							Array.prototype.slice.apply(styleSheet.cssRules).forEach(function(rule){
-								matches=document.querySelectorAll(rule.selectorText);
-								//console.log(rule.selectorText, matches);
 								try{
+									matches=document.querySelectorAll(rule.selectorText);
+									//console.log(rule.selectorText, matches);
 									if(matches && matches.length){
 										matched.push({rule:rule.selectorText, text:rule.cssText, matches:matches.length||0, stylesheet:styleSheet.href||'embedded'})
 									}
+									ruleCount++;
 								}catch(e){
-									console.error('<!--', rule.selectorText, e, '-->');
+									console.error('<!--', rule.selectorText, rule.cssText, e, '-->');
 								}
-								ruleCount++;
 							})
-						}catch(e1){
+						/*}catch(e1){
 							console.error('<!--', styleSheet.href, e1, '-->');
-						}
+						}*/
 					}
 					sheetCount++;
 				});
