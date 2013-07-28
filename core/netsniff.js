@@ -84,8 +84,8 @@ function createHAR(address, title, startTime, endTime, resources)
                 serverRequestDate:headerISODateToSeconds(endReply.headers, 'Date'),
                 maxAge:getMaxAge(endReply.headers),
                 isGzipped:endReply.headers.some(function(h){return (h.name==='Content-Encoding' && h.value==='gzip')}),
-                mimeType:endReply.contentType.substring(0,(endReply.contentType.indexOf(';')===-1)?endReply.contentType.length :endReply.contentType.indexOf(';')),
-                mimeGroup:endReply.contentType.substring(0,endReply.contentType.indexOf('/'))
+                mimeType:(endReply.contentType)?endReply.contentType.substring(0,(endReply.contentType.indexOf(';')===-1)?endReply.contentType.length :endReply.contentType.indexOf(';')):"",
+                mimeGroup:(endReply.contentType)?endReply.contentType.substring(0,endReply.contentType.indexOf('/')):""
             },
             timings: {
                 blocked: request.time - startTimeSeconds, //rb
@@ -221,7 +221,7 @@ function run(params, callback){
     };
     page.onError = function(msg){console.log("[ERROR]",msg)};
     page.open(page.address, function(status) {
-        console.log("content: ",page.content);
+        //console.log("content: ",page.content);
         page.endTime = new Date();
 
         var har, data, formatted;
@@ -230,7 +230,7 @@ function run(params, callback){
         });
         har = createHAR(page.address, page.title, page.startTime, page.endTime, page.resources);
         data=JSON.stringify(har, null, 4);
-        formatted=format('templates/speedreport.html', {DATA:data});
+        formatted=format('templates/netsniff.html', {DATA:data});
         return (callback && "function" === typeof callback)?callback(data, formatted):data;
     });
 }
