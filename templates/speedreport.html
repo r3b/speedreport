@@ -153,14 +153,17 @@ function createBarGraph(data){
 	var w=600
 			, thickness=25
 			, h=thickness*data.assetCount
-			, dist = d3.scale.linear().domain([0, data.assetCount]).range([0, h])//distribution
-			, mag = d3.scale.linear().domain([0, data.duration]).rangeRound([10, w])//magnitude
+			, dist = d3.scale.linear().domain([0, data.log.entries.length]).range([0, h])//distribution
+			, durations=data.log.entries.map(function(d){return d.timings.lifetime})
+			, maxDuration= data.log.entries.reduce(function(p,c,i,a){return Math.max(p,c.timings.lifetime)},0)
+			//, minDuration= data.log.entries.reduce(function(p,c,i,a){return Math.min(p,c.timings.lifetime)},100000)
+			, mag = d3.scale.quantize().domain(durations).rangeRound([10,w]).nice()//magnitude
 			, chart=d3
 					.select('#barGraph')
 					.html('')
 					.append('svg')
 					.attr("class", "chart")
-					.attr("width", w+25)
+					.attr("width", maxDuration+25)
 					.attr("height", h+25)
 					.on("click", unhighlightPropertyClick)
 			, legend=d3
@@ -220,13 +223,14 @@ function createBarGraph(data){
 				.attr("fill", data.stackedColors[property])
 				.attr("x", 0)
 				.attr("y", function(d, i) { return dist(i); })
-				.attr("width", 0)
+				.attr("width", function(){console.log(data.duration,mag(data.duration));return mag(data.duration)})
+				//.attr("width", function(d,i){return mag(d);})
+				//.attr("width", , function(d,i){console.log(d,i);return mag(d);})
 				.attr("height", thickness)
 				.transition()
 				.delay(function(d,i){return data.assets[i].blocking})
 				.duration(function(d,i){return data.assets[i].pageLifetime})
 				.style('opacity',1)
-				.attr("width", function(d,i){return mag(d);})
 	});
 	//URLs
 	chart
@@ -239,7 +243,8 @@ function createBarGraph(data){
 			.append("text")
 			.attr("x", 0)
 			.attr("y", function(d, i) { return dist(i+1); })
-			.attr("width", data.duration)
+			//.attr("width", data.duration)
+			//.attr("width", , function(d,i){console.log(d,i);return mag(d);})
 			.attr("height", thickness)
 			.attr("dx", ".35em") // padding-right
 			.attr("dy", -6) // vertical-align: middle
@@ -252,7 +257,7 @@ function createBarGraph(data){
 			.append("g")
 			.attr("transform", "translate(0,25)")
 	ticks.selectAll("line")
-			.data(mag.ticks(10))
+			.data(mag.ticks(100))
 			.enter().append("line")
 			.attr("x1", mag)
 			.attr("x2", mag)
@@ -261,7 +266,7 @@ function createBarGraph(data){
 			.style("stroke", "#ccc");
 	//tick labels
 	ticks.selectAll(".rule")
-			.data(mag.ticks(10))
+			.data(mag.ticks(100))
 			.enter().append("text")
 			.attr("class", "rule")
 			.attr("x", mag)
