@@ -39,7 +39,6 @@ function createHAR(address, title, startTime, endTime, resources)
             startReply = resource.startReply,
             endReply = resource.endReply,
             startTimeSeconds = Date.parse(startTime);
-
         if (!request || !startReply || !endReply) {
             return;
         }
@@ -56,6 +55,7 @@ function createHAR(address, title, startTime, endTime, resources)
             request: {
                 method: request.method,
                 url: request.url,
+                _domain: /^\w+:\/\/([a-z0-9\-\.]+)/.exec("https://www.cnn.com/blah")[1],
                 httpVersion: "HTTP/1.1",
                 cookies: [],
                 headers: request.headers,
