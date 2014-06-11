@@ -28,8 +28,7 @@ function getMaxAge(headers){
     return (matches && matches.length)? parseInt(matches[1]):null;
 
 }
-function createHAR(address, title, startTime, endTime, resources)
-{
+function createHAR(address, title, startTime, endTime, resources){
     var startTimeSeconds=Date.parse(startTime);
     var endTimeSeconds=Date.parse(endTime);
     var entries = [];
@@ -47,7 +46,7 @@ function createHAR(address, title, startTime, endTime, resources)
         // they aren't included in specification
         if (request.url.match(/(^data:image\/.*)/i)) {
             return;
-	}
+        }
 
         entries.push({
             startedDateTime: request.time.toISOString(),
@@ -55,7 +54,7 @@ function createHAR(address, title, startTime, endTime, resources)
             request: {
                 method: request.method,
                 url: request.url,
-                _domain: /^\w+:\/\/([a-z0-9\-\.]+)/.exec("https://www.cnn.com/blah")[1],
+                _domain: /^\w+:\/\/([a-z0-9\-\.]+)/.exec(request.url)[1],
                 httpVersion: "HTTP/1.1",
                 cookies: [],
                 headers: request.headers,

@@ -1,7 +1,6 @@
 var fs = require('fs')
     , page = require('webpage').create()
     , whiskers = require('../lib/modules/whiskers');
-
 function run(params, callback){
     var t=Date.now()
         , pageInfo={url:params.url, assets:[]}
@@ -40,73 +39,9 @@ function run(params, callback){
         var data, formatted;
         pageInfo.requestTime=params.time;
         pageInfo.responseTime=Date.now();
-        switch(status) {
-            case 'success':
-                try {
-                    //pageInfo.requestTime=Date.parse(pageInfo.assets.filter(function(x){return (x.request.id==1)})[0].request.time);
-                    data=JSON.stringify(pageInfo, undefined, 4)
-                    //printToFile('speedreports/test', data);
-                    formatted=format('templates/speedreport.html', {DATA:data});
-                }catch(e){
-                    console.error("error writing to file ",e);
-                }
-                break;
-
-            default:
-                console.error('/* FAIL to load the address */');
-                break;
-        }
-        return (callback && "function" === typeof callback)?callback(formatted):data;
+        return (callback && "function" === typeof callback)?callback(pageInfo):pageInfo;
     };
     page.open(params.url);
-}
-function normalizeReportData(data){
-    //data.requestTime=data.assets.filter(function(x){return (x.request.id==1)})[0].request.time;
-    data.duration=data.responseTime-data.requestTime;
-    if(data.duration<0){
-        data.duration=0;
-    }
-    data.blocked=0;
-    data.latency=0;
-    data.downloadTime=0;
-    data.lifetime=0;
-    data.pageLifetime=0;
-    data.stacked=[];
-    data.stackedProperties=['Blocking', 'Latency', 'Download time', 'Lifetime'];
-    data.stackedColors=['steelblue', 'yellow', 'red', 'green'];
-    data.assetCount=data.assets.length;
-    data.mimeTypes={};
-    data.mimeGroups={};
-    data.assets.forEach(function(asset){
-        asset.request.time=Date.parse(asset.request.time);
-        asset.response.time=Date.parse(asset.response.time);
-        asset.response.received=Date.parse(asset.response.received);
-        asset.blocked=asset.request.time-data.requestTime;
-        asset.latency=asset.response.received-asset.request.time;
-        asset.latencyStacked=asset.blocked+asset.latency;
-        asset.downloadTime=asset.response.time-asset.response.received;
-        asset.downloadTimeStacked=asset.latencyStacked+asset.downloadTime;
-        asset.lifetime=asset.response.time-asset.request.time;
-        asset.pageLifetime=asset.response.time-data.requestTime;
-        asset.stacked=[asset.blocked,asset.latencyStacked,asset.downloadTimeStacked, asset.pageLifetime];
-        asset.mimeType=asset.response.contentType;
-        if(asset.mimeType.indexOf(';')!==-1){
-            asset.mimeType=asset.response.contentType.substring(0,asset.response.contentType.indexOf(';'));
-        }
-        asset.mimeGroup=asset.mimeType.substring(0,asset.mimeType.indexOf('/'));
-        data.blocked+=asset.blocked;
-        data.latency+=asset.latency;
-        data.downloadTime+=asset.downloadTime;
-        data.lifetime+=asset.lifetime;
-        data.pageLifetime+=asset.pageLifetime;
-        data.stacked.push(asset.stacked);
-        if(asset.mimeType in data.mimeTypes){
-            data.mimeTypes[asset.mimeType].push(asset);
-        }else{
-            data.mimeTypes[asset.mimeType]=[asset];
-        }
-    })
-    return data;
 }
 function format(file, data){
     var template;
@@ -117,6 +52,9 @@ function format(file, data){
         template=html = fs.read(file);
     }
     return whiskers.render(template, data);
+}
+function save(data){
+    //http://api.usergrid.com/rbridges/speedreport/reports
 }
 function printToFile(filename, data) {
     var f

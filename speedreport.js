@@ -21,19 +21,35 @@ var args = require('system').args,
     speedreport = require('./core/netsniff.js'),
     time=Date.now(),
     instance;
+var Promise = require('./core/promise.js').Promise;
+var Ajax = require('./core/ajax.js').Ajax;
 params.time=Date.now();
 // run phantomas
 //instance = new phantomas(params);
 
 try {
     speedreport.run(params, function(data, formatted){
-        console.log(formatted);
-        phantom.exit();
+        // var data=JSON.parse(data);
+        // var name=data.log.pages[0].id;
+        // name=name.replace(/^https?:\/\//,'');
+        // data.name=name+'_'+params.time;
+        data.type='report';
+        // console.log(data);
+        // phantom.exit();
+        // console.log(data.name);
+        Ajax.post('http://api.usergrid.com/rbridges/spooky/reports', data).then(function(err, response){
+            var response=JSON.parse(response.responseText);
+            if(response.error){
+                console.error(response.error_description);
+            }else{
+                console.log("Data posted successfully to http://api.usergrid.com/rbridges/spooky"+response.entities[0].metadata.path)
+            }
+            phantom.exit();
+        });
     });
 }
 catch(ex) {
     console.log('speedreport v' + speedreport.version + ' failed with an error:');
     console.log(ex);
-
     phantom.exit(1);
 }

@@ -3,7 +3,9 @@
 <html>
 <head>
 	<meta http-equiv="X-UA-Compatible" content="IE=9;IE=8;IE=7;">
-	<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+	<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>7
+	<script src="../core/promise.js" charset="utf-8"></script>
+	<script src="../core/ajax.js" charset="utf-8"></script>
 	<!-- Le styles -->
 	<link href="http://loadreport.wesleyhales.com/bootstrap/css/bootstrap.css" rel="stylesheet">
 	<style>
@@ -62,9 +64,14 @@
 		Analyzing...
 	</div>
 </div>
+<div>
+	<ul id="list">
+	</ul>
+</div>
 <script>
 function normalizeReportData(data){
-	data.duration=data.responseTime-data.requestTime;
+	console.log(data);
+	data.duration=data.pages[0].pageTimings.startTime-data.pages[0].pageTimings.endTime;
 	data.blocked=0;
 	data.latency=0;
 	data.downloadTime=0;
@@ -89,10 +96,11 @@ function normalizeReportData(data){
 		asset.pageLifetime=asset.response.time-data.requestTime;
 		asset.stacked=[asset.blocked,asset.latencyStacked,asset.downloadTimeStacked, asset.pageLifetime];
 		asset.mimeType=asset.response.contentType;
-		if(asset.mimeType.indexOf(';')!==-1){
+		asset.mimeGroup='UNKNOWN';
+		if(asset.mimeType && asset.mimeType.indexOf(';')!==-1){
 			asset.mimeType=asset.response.contentType.substring(0,asset.response.contentType.indexOf(';'));
+			asset.mimeGroup=asset.mimeType.substring(0,asset.mimeType.indexOf('/'));
 		}
-		asset.mimeGroup=asset.mimeType.substring(0,asset.mimeType.indexOf('/'));
 		data.blocked+=asset.blocked;
 		data.latency+=asset.latency;
 		data.downloadTime+=asset.downloadTime;
@@ -369,15 +377,40 @@ function createBubbleChart(data){
 		force.start();
 	}
 }
-var data=normalizeReportData({DATA})
-	, tooltip = d3.select("body").append("div")
-		.attr("class", "tooltip")
-		.style("opacity", 0)
-	, tooltipBubble = d3.select("body").append("div")
-		.attr("class", "tooltipBubble")
-		.style("opacity", 0);
-createBarGraph(data);
-createBubbleChart(data);
+var ajax=new Ajax();
+var uuidValueRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+function isUUID(uuid) {
+	return (!uuid)?false:uuidValueRegex.test(uuid);
+}
+var BASE='http://api.usergrid.com/rbridges/speedreport/reports';
+var id=location.search.substring(1);
+if(id){
+	ajax.get(BASE+'/'+id).then(function(err, response){
+		var response_data=JSON.parse(response.responseText);
+		response_data=response_data.entities[0];
+		response_data.assets=response_data.log.entries;
+		var data=normalizeReportData(response_data)
+			, tooltip = d3.select("body").append("div")
+				.attr("class", "tooltip")
+				.style("opacity", 0)
+			, tooltipBubble = d3.select("body").append("div")
+				.attr("class", "tooltipBubble")
+				.style("opacity", 0);
+		createBarGraph(data);
+		createBubbleChart(data);
+	})
+}else{
+	ajax.get(BASE).then(function(err, response){
+		var list=document.getElementById('list');
+		list.innerHTML="";
+		var response_data=JSON.parse(response.responseText);
+
+		console.log(response_data);
+		response_data.entities.forEach(function(entity){
+			list.innerHTML+="<li><a href=\"?"+entity.uuid+"\">"+entity.log.pages[0].id+"</a>";
+		})
+	})
+}
 
 </script>
 </body>
