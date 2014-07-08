@@ -455,13 +455,21 @@ Controls.prototype.onKey = function(val, e) {
 	e.preventDefault && e.preventDefault();
 	e.stopPropagation && e.stopPropagation();
 };
-function bluesky(){
-  var random = Math.random,r=g=(random() * 192) | 0, b=192+(random() * 64) | 0;
-  return [r,g,b,128]
+function bluesky(canvas, width, height, bright){
+  bright=bright||192
+  var color=function(){
+    var random = Math.random,r=g=(random() * bright/2) | 0, b=bright+(random() * (bright/2)) | 0;
+    return [r,g,b,128]
+  }
+  perlinNoise(canvas, width, height, color)
 }
-function grassy(){
-  var random = Math.random,r=b=(random() * 24) | 0, g=24+(random() * 24) | 0;
-  return [r,g,b,128]
+function grassy(canvas, width, height, bright){
+  bright=bright||24
+  var color=function(){
+    var random = Math.random,r=b=(random() * bright) | 0, g=bright+(random() * (256-bright)) | 0;
+    return [r,g,b,128]
+  }
+  perlinNoise(canvas, width, height, color)
 }
 function randomNoise(canvas, x, y, width, height, colorFunc) {
     x = x || 0;
@@ -506,12 +514,6 @@ function perlinNoise(canvas, width, height, colorFunc) {
     g.restore();
     return canvas;
 }
-function perlinGrass(canvas, width, height) {
-  return perlinNoise(canvas, width, height, grassy)
-}
-function perlinSky(canvas, width, height) {
-  return perlinNoise(canvas, width, height, bluesky)
-}
 function Map(){
 	var uuid=(location.hash)?location.hash.substring(1):"";
 	var reportUrl="http://api.usergrid.com/rbridges/spooky/reports/"+uuid;
@@ -520,17 +522,20 @@ function Map(){
 	this.size=0;
 	this.wallGrid;
 	this.light=1;
-  // this.skybox = new Bitmap("Atl_skyline_from_Piedmont_Park.jpg", 1920, 1080);
-  this.skybox=createImageTexture({background:'#0B610B', callback:function(canvas){perlinSky(canvas);}});
-  this.land=createImageTexture({background:'#0B610B', callback:function(canvas){perlinGrass(canvas);}});
-
-	// this.land=createImageTexture({background:'#0B610B'});
 	Ajax.get(reportUrl).then(function(err,data){
 		var data=JSON.parse(data.responseText);
 		var report=data.entities.pop();
 		this.size=report.log.entries.length*2;
 		this.wallGrid=Array.apply(0, Array(this.size * this.size)).map(function () { return 0 });
 		this.gridData=Array.apply(0, Array(this.size * this.size)).map(function () { return 0 });
+    var totalTime=report.log.entries[report.log.entries.length-1].stackedTimings.lifetime||1000;
+    this.skybox=createImageTexture({background:'#A9F5F2', callback:function(canvas){bluesky(canvas, 192-(192*2000/totalTime));}});
+
+    this.land=createImageTexture({background:'#0B610B', callback:function(canvas){grassy(canvas, 24-(24*2000/totalTime));}});
+
+    this.raining=(totalTime>2000);
+
+    console.log(report.log.entries)
 		report.log.entries.forEach(function(entry){
 			var pathname=getFilenameFromURL(entry.request.url);
 			if(pathname.length>1 && /\//.test(pathname)){
@@ -567,7 +572,7 @@ function Map(){
           x.x++;
         };
 				self.set(x.x,x.y,1);
-				self.setEntry(x.x,x.y,x);
+        self.setEntry(x.x,x.y,x);
 			})
 			// console.log("blocks", self.wallGrid);
 			// for(var i=0;i<self.wallGrid.length;i+=self.size){
@@ -646,11 +651,11 @@ Map.prototype.cast = function(point, angle, range) {
   }
 
   function inspect(step, shiftX, shiftY, distance, offset) {
-    var dx = cos < 0 ? shiftX : 0;
-    var dy = sin < 0 ? shiftY : 0;
+    var dx = sin < 0&&cos>0 ? shiftX : 0;
+    var dy = cos < 0&&sin>0 ? shiftY : 0;
     step.height = (self.get(step.x - dx, step.y - dy)===0)?0:1;
     step.distance = distance + Math.sqrt(step.length2);
-    if (shiftX) step.shading = cos < 0 ? 2 : 0;
+    if (shiftX&&!shiftY) step.shading = cos < 0 ? 2 : 0;
     else step.shading = sin < 0 ? 2 : 1;
     step.offset = offset - Math.floor(offset);
     return step;
@@ -774,19 +779,10 @@ Camera.prototype.drawLand = function(direction, land, ambient) {
 };
 Camera.prototype.drawColumns = function(player, map) {
   this.ctx.save();
+
   for (var column = 0; column < this.resolution; column++) {
     var angle = this.fov * (column / this.resolution - 0.5);
     var ray = map.cast(player, player.direction + angle, this.range);
-    this.drawColumn(column, ray, angle, map);
-  }
-  this.ctx.restore();
-};
-Camera.prototype.drawColumns2 = function(player, map) {
-  this.ctx.save();
-  for (var column = 0; column < this.resolution; column++) {
-    var angle = this.fov * (column / this.resolution - 0.5);
-    var ray = map.cast(player, player.direction + angle, this.range);
-    console.log(angle, ray);
     this.drawColumn(column, ray, angle, map);
   }
   this.ctx.restore();
@@ -809,8 +805,10 @@ Camera.prototype.drawColumn = function(column, ray, angle, map) {
 	while (++hit < ray.length && ray[hit].height <= 0);
 	for (var s = ray.length - 1; s >= 0; s--) {
 	  var step = ray[s];
-	  // var rainDrops = Math.pow(Math.random(), 3) * s;
-	  // var rain = (rainDrops > 0) && this.project(0.1, angle, step.distance);
+    if(map.raining){
+      var rainDrops = Math.pow(Math.random(), 3) * s;
+      var rain = (rainDrops > 0) && this.project(0.1, angle, step.distance);
+    }
 
 	  if (s === hit) {
   		var texture = map.getEntry(step.x,step.y).texture;
@@ -831,10 +829,11 @@ Camera.prototype.drawColumn = function(column, ray, angle, map) {
 
 	    ctx.fillRect(left, wall.top, width, wall.height);
 	  }
-	  
-	   ctx.fillStyle = '#ffffff';
-	   ctx.globalAlpha = 0.15;
-	  // while (--rainDrops > 0) ctx.fillRect(left, Math.random() * rain.top, 1, rain.height);
+	  if(map.raining){
+      ctx.fillStyle = '#ffffff';
+      ctx.globalAlpha = 0.15;
+      while (--rainDrops > 0) ctx.fillRect(left, Math.random() * rain.top, 1, rain.height);
+    }
 	}
 };
 
