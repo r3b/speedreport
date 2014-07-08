@@ -37,12 +37,12 @@ try {
         // console.log(data);
         // phantom.exit();
         // console.log(data.name);
-        Ajax.post('http://api.usergrid.com/rbridges/spooky/reports', data).then(function(err, response){
+        Ajax.post('http://api.usergrid.com/rbridges/speedreport/reports', data).then(function(err, response){
             var response=JSON.parse(response.responseText);
             if(response.error){
                 console.error(response.error_description);
             }else{
-                console.log("Data posted successfully to http://api.usergrid.com/rbridges/spooky"+response.entities[0].metadata.path)
+                console.log("Data posted successfully to http://api.usergrid.com/rbridges/speedreport"+response.entities[0].metadata.path)
             }
             phantom.exit();
         });
