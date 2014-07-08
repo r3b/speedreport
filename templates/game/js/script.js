@@ -304,7 +304,6 @@ function createImageTexture(options){
 	if(src){
 		var imageObj = new Image();
 		imageObj.onload = function() {
-			console.log(src, "loaded");
 			wi=wi||imageObj.width;
 			hi=hi||imageObj.height;
 			context.drawImage(imageObj, xi, yi, wi, hi, canvas.width-iconSize, canvas.height-iconSize, iconSize, iconSize);
@@ -331,7 +330,6 @@ function createSprite(src, width, height){
 	var context = canvas.getContext('2d');
 	var imageObj = new Image();
 	imageObj.onload = function() {
-		console.log(src, "loaded");
 		var wi=imageObj.width,
 			hi=imageObj.height;
 		context.drawImage(imageObj, 0, 0, wi, hi, 0, 0, canvas.width, canvas.height);
@@ -340,21 +338,21 @@ function createSprite(src, width, height){
 	return canvas;
 }
 function getTextureImageByMimeType(mimetype){
-	var texture="other.gif";
+	var texture="img/other.gif";
 	switch(mimetype){
 		case "application/x-javascript":
 		case "application/javascript":
 		case "text/javascript":
-			texture="js.png";
+			texture="img/js.png";
 			break;
 		case "text/css":
-			texture="css3.png";
+			texture="img/css3.png";
 			break;
 		case "text/html":
-			texture="html5.png";
+			texture="img/html5.png";
 			break;
 		default:
-      texture="other.gif";
+      texture="img/other.gif";
 			break;
 	}
 	return texture;
@@ -516,7 +514,7 @@ function perlinNoise(canvas, width, height, colorFunc) {
 }
 function Map(){
 	var uuid=(location.hash)?location.hash.substring(1):"";
-	var reportUrl="http://api.usergrid.com/rbridges/spooky/reports/"+uuid;
+	var reportUrl="http://api.usergrid.com/rbridges/speedreport/reports/"+uuid;
 	var blocks=[];
 	this.loaded=false;
 	this.size=0;
@@ -535,7 +533,6 @@ function Map(){
 
     this.raining=(totalTime>2000);
 
-    console.log(report.log.entries)
 		report.log.entries.forEach(function(entry){
 			var pathname=getFilenameFromURL(entry.request.url);
 			if(pathname.length>1 && /\//.test(pathname)){
@@ -583,7 +580,7 @@ function Map(){
 		})(this);
 		this.loaded=true;
 		(function(map){
-			player = new Player(1,1, deg2rad(45));
+			player = new Player(-1,1, deg2rad(30));
 			controls = new Controls();
 			camera = new Camera(display, MOBILE ? 160 : 320, Math.PI*0.3);
 			loop = new GameLoop();
@@ -672,7 +669,7 @@ function Player(x, y, direction) {
 	this.y = y;
 	this.direction = direction;
 	this.paces=0;
-	this.weapon = createSprite("phantomjs.png", 128, 128);
+	this.weapon = createSprite("img/phantomjs.png", 128, 128);
 }
 
 Player.prototype.rotate = function(angle) {
