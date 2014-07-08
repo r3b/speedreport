@@ -455,7 +455,63 @@ Controls.prototype.onKey = function(val, e) {
 	e.preventDefault && e.preventDefault();
 	e.stopPropagation && e.stopPropagation();
 };
-
+function bluesky(){
+  var random = Math.random,r=g=(random() * 192) | 0, b=192+(random() * 64) | 0;
+  return [r,g,b,128]
+}
+function grassy(){
+  var random = Math.random,r=b=(random() * 24) | 0, g=24+(random() * 24) | 0;
+  return [r,g,b,128]
+}
+function randomNoise(canvas, x, y, width, height, colorFunc) {
+    x = x || 0;
+    y = y || 0;
+    width = width || canvas.width;
+    height = height || canvas.height;
+    var g = canvas.getContext("2d"),
+        imageData = g.getImageData(x, y, width, height),
+        random = Math.random,
+        pixels = imageData.data,
+        n = pixels.length,
+        i = 0;
+    while (i < n) {
+        
+        (function(r,g,b,a){
+          pixels[i++] = r;
+          pixels[i++] = g;
+          pixels[i++] = b;
+          pixels[i++] = a;
+        }.apply(this, colorFunc(i)))
+    }
+    g.putImageData(imageData, x, y);
+    return canvas;
+}
+ 
+function perlinNoise(canvas, width, height, colorFunc) {
+    var c2=document.createElement('canvas');
+    c2.width=width||128;
+    c2.height=height||128;
+    var noise = randomNoise(c2, 0, 0, 128, 128, colorFunc||grassy);
+    var g = canvas.getContext("2d");
+    g.save();
+    
+    /* Scale random iterations onto the canvas to generate Perlin noise. */
+    for (var size = 4; size <= noise.width; size *= 2) {
+        var x = (Math.random() * (noise.width - size)) | 0,
+            y = (Math.random() * (noise.height - size)) | 0;
+        g.globalAlpha = 4 / size;
+        g.drawImage(noise, x, y, size, size, 0, 0, canvas.width, canvas.height);
+    }
+ 
+    g.restore();
+    return canvas;
+}
+function perlinGrass(canvas, width, height) {
+  return perlinNoise(canvas, width, height, grassy)
+}
+function perlinSky(canvas, width, height) {
+  return perlinNoise(canvas, width, height, bluesky)
+}
 function Map(){
 	var uuid=(location.hash)?location.hash.substring(1):"";
 	var reportUrl="http://api.usergrid.com/rbridges/spooky/reports/"+uuid;
@@ -464,8 +520,11 @@ function Map(){
 	this.size=0;
 	this.wallGrid;
 	this.light=1;
-	this.skybox = new Bitmap("Atl_skyline_from_Piedmont_Park.jpg", 1920, 1080);
-	this.land=createImageTexture({background:'#99aa99'});
+  // this.skybox = new Bitmap("Atl_skyline_from_Piedmont_Park.jpg", 1920, 1080);
+  this.skybox=createImageTexture({background:'#0B610B', callback:function(canvas){perlinSky(canvas);}});
+  this.land=createImageTexture({background:'#0B610B', callback:function(canvas){perlinGrass(canvas);}});
+
+	// this.land=createImageTexture({background:'#0B610B'});
 	Ajax.get(reportUrl).then(function(err,data){
 		var data=JSON.parse(data.responseText);
 		var report=data.entities.pop();
@@ -478,8 +537,6 @@ function Map(){
 				pathname=pathname.substring(pathname.lastIndexOf('/')+1);
 			}
 			var mimetype=entry.response.content.mimeType.replace(/;.*/,'');
-      // var texture=new Bitmap('js.png', 1052, 1052);
-
 			var texture=createImageTexture({
 				src:getTextureImageByMimeType(mimetype),
 				background:'#555555',
@@ -489,7 +546,7 @@ function Map(){
 					var ctx=canvas.getContext('2d');
 					ctx.fillStyle = '#ffffff';
 					ctx.globalAlpha = 1;
-					ctx.font = 'normal 100pt Times New Roman';
+					ctx.font = 'normal 90pt Times New Roman';
 			  		ctx.fillText(pathname, 5, 120);
 			  		ctx.fillText(entry.request._domain, 5, 220);
 			  		ctx.fillText("blocked: "+entry.timings.blocked, 5, 320);
@@ -688,9 +745,9 @@ Camera.prototype.drawSky = function(direction, sky, ambient) {
 	var left = -width * direction / CIRCLE;
 
 	this.ctx.save();
-	this.ctx.drawImage(sky.image, left, 0, width, this.height/2);
+	this.ctx.drawImage(sky.image||sky, left, 0, width, this.height/2);
 	if (left < width - this.width) {
-	  this.ctx.drawImage(sky.image, left + width, 0, width, this.height/2);
+	  this.ctx.drawImage(sky.image||sky, left + width, 0, width, this.height/2);
 	}
 	if (ambient > 0) {
 	  this.ctx.fillStyle = '#ffffff';
@@ -704,9 +761,9 @@ Camera.prototype.drawLand = function(direction, land, ambient) {
 	var left = -width * direction / CIRCLE;
 
 	this.ctx.save();
-	this.ctx.drawImage(land, left, this.height/2, width, this.height/2);
+	this.ctx.drawImage(land.image||land, left, this.height/2, width, this.height/2);
 	if (left < width - this.width) {
-	  this.ctx.drawImage(land, left + width, this.height/2, width, this.height/2);
+	  this.ctx.drawImage(land.image||land, left + width, this.height/2, width, this.height/2);
 	}
 	if (ambient > 0) {
 	  this.ctx.fillStyle = '#ffffff';
