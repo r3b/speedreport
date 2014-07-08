@@ -24,25 +24,32 @@ var args = require('system').args,
 var Promise = require('./core/promise.js').Promise;
 var Ajax = require('./core/ajax.js').Ajax;
 params.time=Date.now();
-// run phantomas
-//instance = new phantomas(params);
-
+function usage(){
+    console.error("Usage:\n\t./speedreport.js\n\t\t--url=<page to check>\n\t\t[--timeout=5]\n\t\t[--format=json|html]\n\t\t[--verbose]\n\t\t[--silent]\n\t\t[--modules=moduleOne,moduleTwo]\n\t\t[--user-agent='Custom user agent']");
+    phantom.exit();
+}
 try {
+    if(!params.url){
+        console.error("You must provide a url");
+        usage();
+    }
+    if(!/https?:\/\//.test(params.url)){
+        console.error("the provided url is not valid");
+        usage();
+    }
     speedreport.run(params, function(data, formatted){
-        // var data=JSON.parse(data);
-        // var name=data.log.pages[0].id;
-        // name=name.replace(/^https?:\/\//,'');
-        // data.name=name+'_'+params.time;
+        if(data===null){
+            console.error("Could not generate report.");
+            usage();
+        }
         data.type='report';
-        // console.log(data);
-        // phantom.exit();
-        // console.log(data.name);
-        Ajax.post('http://api.usergrid.com/rbridges/speedreport/reports', data).then(function(err, response){
+        var appname=params.app||params.appname||"speedreport";
+        Ajax.post('http://api.usergrid.com/rbridges/'+appname+'/reports', data).then(function(err, response){
             var response=JSON.parse(response.responseText);
             if(response.error){
                 console.error(response.error_description);
             }else{
-                console.log("Data posted successfully to http://api.usergrid.com/rbridges/speedreport"+response.entities[0].metadata.path)
+                console.log("Data posted successfully to http://api.usergrid.com/rbridges/"+appname+response.entities[0].metadata.path)
             }
             phantom.exit();
         });

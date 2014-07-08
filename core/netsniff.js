@@ -125,7 +125,7 @@ function createHAR(address, title, startTime, endTime, resources){
                 pageTimings: {
                     startTime:startTimeSeconds,
                     endTime:endTimeSeconds,
-                    totalTime:entries[entries.length-1].stackedTimings.lifetime,
+                    // totalTime:entries[entries.length-1].stackedTimings.lifetime,
                     onLoad: endTimeSeconds - startTimeSeconds
                 }
             }],
@@ -195,7 +195,7 @@ function printToFile(filename, data) {
 function run(params, callback){
     var page = require('webpage').create();
 
-    page.address = params.url;
+    page.address = (/^https?:\/\//.test(params.url))?params.url:'http://'+params.url;
     page.resources = [];
 
     page.onLoadStarted = function () {
@@ -220,7 +220,9 @@ function run(params, callback){
     };
     page.onError = function(msg){console.log("[ERROR]",msg)};
     page.open(page.address, function(status) {
-        //console.log("content: ",page.content);
+        if(page.plainText=='An internal error has occurred. Please retry your request.'){
+            return (callback && "function" === typeof callback)?callback(null, null):null;
+        }
         page.endTime = new Date();
 
         var har, data, formatted;
