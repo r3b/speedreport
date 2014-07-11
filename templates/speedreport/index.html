@@ -8,27 +8,49 @@
     <script src="js/vendor/modernizr.js"></script>
   </head>
   <body>
-    
+
     <div class="row">
       <div class="large-12 columns">
         <h1>Speedreport</h1>
         <h6>by <a href="http://www.twitter.com/ryanbridges">ryan bridges</a></h6>
       </div>
     </div>
-    
+
     <div class="row">
       <div class="large-12 columns">
       	<div class="panel">
 	        <h3>View waterfall and bouncy ball reports for your app</h3>
 	        <p>To play along, clone <a href="https://github.com/r3b/speedreport">github.com/r3b/speedreport</a> and run speedreport.js against your app, Then come back here to play with the results!</p>
-	        <div class="row">
-	        	<div class="large-4 medium-4 columns">
-    	    		<p><ul id="list"></ul></p>
-    	    	</div>
-					</div>
+          <p>Or, you can add your URL and email address to the queue and we'll email you when it's done.</p>
       	</div>
       </div>
     </div>
+    <div class="row">
+    </div>
+    <div class="row">
+      <div class="large-6 medium-6 columns">
+        <div id="previous" class="large-3 medium-3 columns left" style="opacity:0.05"><div class="button round text-center" style="margin:0 auto 10 auto;font-size:120px;line-height:120px;vertical-align:middle;color:black;background:#ef2b2b;border-radius:1000px;border:1px solid #ef2b2b;">&laquo;</div></div>
+        <div class="large-6 medium-6 columns center">
+          <h3>Latest Entries</h3>
+          <ul id="list"></ul>
+        </div>
+        <div id="next" class="large-3 medium-3 columns right" style="opacity:0.05"><div class="button round text-center" style="margin:0 auto 10 auto;font-size:120px;line-height:120px;vertical-align:middle;color:black;background:#ef2b2b;border-radius:1000px;border:1px solid #ef2b2b;height:100%;width:100%">&raquo;</div></div>
+      </div>
+      <div class="large-6 columns">
+        <div class="panel">
+          <div class="row">
+            <label>URL
+            <input type="url" id="url" name="url" placeholder="yourdomain.com">
+            </label>
+            <label>Email
+            <input type="email" id="email" name="email" placeholder="email@yourdomain.com">
+            </label>
+            <a id="signup" href="javascript:void(0)" class="button round" style="font-size:0.8em;color:black;background:#ef2b2b;border-radius:1000px;border:1px solid #ef2b2b;">Go!</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script src="js/promise.js"></script>
     <script src="js/ajax.js"></script>
     <script src="js/script.js"></script>

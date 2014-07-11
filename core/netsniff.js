@@ -231,8 +231,7 @@ function run(params, callback){
         });
         har = createHAR(page.address, page.title, page.startTime, page.endTime, page.resources);
         data=JSON.stringify(har, null, 4);
-        formatted=format('templates/netsniff.html', {DATA:data});
-        return (callback && "function" === typeof callback)?callback(data, formatted):data;
+        return (callback && "function" === typeof callback)?callback(data, null):data;
     });
 }
 exports.version="0.2.0";

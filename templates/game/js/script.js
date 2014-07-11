@@ -538,7 +538,7 @@ function Map(){
 			if(pathname.length>1 && /\//.test(pathname)){
 				pathname=pathname.substring(pathname.lastIndexOf('/')+1);
 			}
-			var mimetype=entry.response.content.mimeType.replace(/;.*/,'');
+			var mimetype=(entry.response.content.mimeType)?entry.response.content.mimeType.replace(/;.*/,''):'none';
 			var texture=createImageTexture({
 				src:getTextureImageByMimeType(mimetype),
 				background:'#555555',
