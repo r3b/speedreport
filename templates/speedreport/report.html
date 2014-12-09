@@ -1,437 +1,100 @@
 <!doctype html>
+<html class="no-js" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Speedreport</title>
+    <link rel="stylesheet" href="css/foundation.css" />
+    <script src="js/vendor/modernizr.js"></script>
+  </head>
+  <body>
 
-<html>
-<head>
-	<meta http-equiv="X-UA-Compatible" content="IE=9;IE=8;IE=7;">
-	<script src="js/d3.v3.min.js" charset="utf-8"></script>
-	<script src="js/promise.js" charset="utf-8"></script>
-	<script src="js/ajax.js" charset="utf-8"></script>
-	<!-- Le styles -->
-	<link href="http://loadreport.wesleyhales.com/bootstrap/css/bootstrap.css" rel="stylesheet">
-	<style>
-		body {
-			padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
-		}
-	</style>
-	<link href="http://loadreport.wesleyhales.com/bootstrap/css/bootstrap-responsive.css" rel="stylesheet">
+    <div class="row">
+      <div class="large-12 columns">
+        <h1>Speedreport</h1>
+        <h6>by <a href="http://www.twitter.com/ryanbridges">ryan bridges</a></h6>
+      </div>
+    </div>
 
-	<!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
-	<!--[if lt IE 9]>
-	<script type="text/javascript" src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
-	<![endif]-->
-</head>
-<body>
-<style>
-	div.tooltip,div.tooltipBubble {
-		position: absolute;
-		overflow:hidden;
-		text-align: left;
-		width: 300px;
-		height: 120px;
-		padding: 2px;
-		font: 12px sans-serif;
-		background: lightsteelblue;
-		border: 0px;
-		border-radius: 8px;
-		pointer-events: none;
-	}
-	div#contentBubblesContainer{
-		display:none;
-		width:600px;
-		position:relative;
-		margin: 0 auto;
-	}
-	div#barGraphContainer{
-		display:none;
-		width:600px;
-		position:relative;
-		margin: 0 auto;
-	}
-	svg.legend{
-		position:absolute;
-		top:100px;
-		right:0px;
-	}
-</style>
-<br/>
-<div>
-	<div id="contentBubblesContainer">
-		<h3>Size and content type</h3>
-		<div id="contentBubbles">
-		</div>
-	</div>
-	<div id="barGraphContainer">
-		<h3>Request lifecycle</h3>
-		<div id="barGraph">
-			Analyzing...
-		</div>
-	</div>
-	<div id="listContainer">
-		<ul id="list">
-		</ul>
-	</div>
-</div>
-<script>
-function normalizeReportData(data){
-	console.log(data);
-	data.duration=data.log.pages[0].pageTimings.startTime-data.log.pages[0].pageTimings.endTime;
-	data.blocked=0;
-	data.latency=0;
-	data.downloadTime=0;
-	data.lifetime=0;
-	data.pageLifetime=0;
-	data.stacked=[];
-	data.offsets=[];
-	data.stackedProperties=['Blocking', 'Request Time', 'Latency', 'Download time', 'Lifetime'];
-	data.stackedColors=['steelblue', 'orange', 'orangered', 'red', 'green'];
-	data.assetCount=data.assets.length;
-	data.mimeTypes={};
-	data.mimeGroups={};
-	data.log.entries.forEach(function(asset){
-		asset.request.time=Date.parse(asset.request.time);
-		asset.response.time=Date.parse(asset.response.time);
-		asset.response.received=Date.parse(asset.response.received);
-		asset.mimeType='UNKNOWN';
-		asset.mimeGroup='UNKNOWN';
-		console.log(asset.response);
-		var headers=asset.response.headers.filter(function(h){return h.name==='Content-Type';});
-		if(headers && headers.length){
-			if(headers[0].value && headers[0].value.length){
-				asset.mimeType=headers[0].value;
-			}
-		}
-		if(asset.mimeType && asset.mimeType.indexOf(';')!==-1){
-			asset.mimeType=asset.mimeType.substring(0,asset.mimeType.indexOf(';'));
-			asset.mimeGroup=asset.mimeType.substring(0,asset.mimeType.indexOf('/'));
-		}
-		/*data.blocked+=asset.timings.blocked;
-		data.latency+=asset.timings.wait;
-		data.downloadTime+=asset.timings.receive;
-		data.lifetime+=asset.timings.lifetime;*/
-		//data.pageLifetime+=asset.timings.pageLifetime;
-		asset.stacked=[
-			asset.timings.blocked,
-			asset.timings.send,
-			asset.timings.wait,
-			asset.timings.receive,
-			asset.timings.lifetime
-		];
-		asset.offsets=[
-			0,
-			asset.timings.blocked,
-			asset.timings.blocked+asset.timings.send,
-			asset.timings.blocked+asset.timings.send+asset.timings.wait,
-			0
-		]
-		data.stacked.push(asset.stacked);
-		data.offsets.push(asset.offsets);
-		if(asset.mimeType in data.mimeTypes){
-			data.mimeTypes[asset.mimeType].push(asset);
-		}else{
-			data.mimeTypes[asset.mimeType]=[asset];
-		}
-	})
-	return data;
-}
-function createBarGraph(data){
-	function highlightProperty(d,i){
-		if(!data.stayHighlighted){
-			chart.selectAll('g.bargraph').style('opacity','0.1')
-			chart.selectAll('g.bargraph:nth-child('+(i+1)+')').style('opacity','1')
-		}
-	}
-	function unhighlightProperty(d,i){
-		if(!data.stayHighlighted){
-			chart.selectAll('g.bargraph').style('opacity','1')
-		}
-	}
-	function highlightPropertyClick(d,i){
-		data.stayHighlighted=!(data.stayHighlighted||false);
-		highlightProperty(d,i);
-	}
-	function unhighlightPropertyClick(d,i){
-		data.stayHighlighted=false;
-		unhighlightProperty(d,i);
-	}
-	function showTooltip(d,i){
-		var tooltip=d3.select("div.tooltip")
-		var item=data.log.entries[i];
-		tooltip.transition()
-				.duration(200)
-				.style("opacity", .9);
-		tooltip.html(d + "<br/><br/>"+
-						'<strong>'+item.request.url+'</strong><br/>'+
-						'blocking:&nbsp;'+item.timings.blocked+'ms<br/>'+
-						'latency:&nbsp;'+item.timings.wait+'ms<br/>'+
-						'download time:&nbsp;'+item.timings.receive+'ms<br/>'+
-						'total:&nbsp;'+item.timings.lifetime+'ms<br/>'+
-						'size:&nbsp;'+item.response.bodySize+' bytes<br/>'
-				)
-				.style("left", (d3.event.pageX) + "px")
-				.style("top", (d3.event.pageY - 28) + "px");
-		//})
-	}
-	function hideTooltip(d,i){
-		d3.select("div.tooltip").transition()
-				.duration(500)
-				.style("opacity", 0);
-	}
-	var w=600
-			, thickness=25
-			, h=thickness*data.assetCount
-			, dist = d3.scale.linear().domain([0, data.log.entries.length]).range([0, h])//distribution
-			, durations=data.log.entries.map(function(d){return d.timings.lifetime})
-			, maxDuration= data.log.entries.reduce(function(p,c,i,a){return Math.max(p,c.timings.lifetime)},0)
-			//, minDuration= data.log.entries.reduce(function(p,c,i,a){return Math.min(p,c.timings.lifetime)},100000)
-			, mag = d3.scale.linear().domain([0, maxDuration]).rangeRound([1,w]).clamp(true)//magnitude
-			, chart=d3
-					.select('#barGraph')
-					.html('')
-					.append('svg')
-					.attr("class", "chart")
-					.attr("width", maxDuration+25)
-					.attr("height", h+25)
-					.on("click", unhighlightPropertyClick)
-			, legend=d3
-					.select('#barGraph')
-					.append('svg')
-					.attr("class", "legend")
-					.attr("width", 100)
-					.attr("height", 125)
-			, properties=[4,3,2,1,0];
-			d3.select('#barGraphContainer').style('display','block');
-	legend
-			.selectAll("rect")
-			.data(properties)
-			.enter()
-			.append("rect")
-			.attr("fill", function(d,i){return data.stackedColors[d]})
-			.attr("x", 0)
-			.attr("y", function(d, i) { return dist(i); })
-			.attr("width", 100)
-			.attr("height", thickness)
-			.on("click", highlightPropertyClick)
-			.on("mouseout", unhighlightProperty)
-			.on("mouseover", highlightProperty)
-	;
-	legend
-			.selectAll('text')
-			.data(properties)
-			.enter()
-			.append("text")
-			.attr("x", 0)
-			.attr("y", function(d, i) { return dist(i+1); })
-			.attr("width", 100)
-			.attr("height", thickness)
-			.attr("dx", ".35em") // padding-right
-			.attr("dy", -6) // vertical-align: middle
-			.attr("text-anchor", "start") // text-align: right
-			.style('font-size','0.75em')
-			.text(function(d,i){return data.stackedProperties[d]})
-			.on("click", highlightPropertyClick)
-			.on("mouseout", unhighlightProperty)
-			.on("mouseover", highlightProperty)
-	//each property has its own bar graph in its own layer
-	properties.forEach(function(property){
-		var _data=data.stacked.map(function(stack){return stack[property]});
-		console.log(property, _data[property]);
-		chart
-				.append("g")
-				.attr('class','bargraph')
-				.attr('id',data.stackedProperties[property])
-				.attr("transform", "translate(0,25)")
-				.selectAll("rect")
-				.data(_data)
-				.enter()
-				.append("rect")
-				.on('mouseover',showTooltip)
-				.on('mouseout',hideTooltip)
-				.style('opacity',0)
-				.attr("fill", data.stackedColors[property])
-				.attr("x", function(d,i){return mag(data.offsets[i][property])})
-				.attr("y", function(d, i) { return dist(i); })
-				//.attr("width", function(){console.log(data.duration,mag(data.duration));return mag(data.duration)})
-				//.attr("width", function(d,i){return mag(d);})
-				.attr("width", function(d,i){return mag(d);})
-				.attr("height", thickness)
-				.transition()
-				.delay(function(d,i){return data.log.entries[i].timings.blocked})
-				.duration(function(d,i){return data.log.entries[i].timings.lifetime})
-				.style('opacity',0.75)
-	});
-	//URLs
-	chart
-			.append("g")
-			.attr('id','urls')
-			.attr("transform", "translate(0,25)")
-			.selectAll("text")
-			.data(data.log.entries.map(function(x){return x.request.url}))
-			.enter()
-			.append("text")
-			.attr("x", 0)
-			.attr("y", function(d, i) { return dist(i+1); })
-			//.attr("width", data.duration)
-			//.attr("width", , function(d,i){console.log(d,i);return mag(d);})
-			.attr("height", thickness)
-			.attr("dx", ".35em") // padding-right
-			.attr("dy", -6) // vertical-align: middle
-			.attr("text-anchor", "start") // text-align: right
-			.style('font-size','0.75em')
-			.text(function(d){return (d.length>100)?d.substring(0,100):d;})
-			.on('mouseover',showTooltip)
-			.on('mouseout',hideTooltip);
-	var ticks=chart
-			.append("g")
-			.attr("transform", "translate(0,25)")
-	ticks.selectAll("line")
-			.data(mag)
-			.enter().append("line")
-			.attr("x1", mag)
-			.attr("x2", mag)
-			.attr("y1", 0)
-			.attr("y2", h)
-			.style("stroke", "#ccc");
-	//tick labels
-	ticks.selectAll(".rule")
-			.data(mag)
-			.enter().append("text")
-			.attr("class", "rule")
-			.attr("x", mag)
-			.attr("y", 0)
-			.attr("dy", -3)
-			.attr("text-anchor", "middle")
-			.text(function(d,i){return d+'ms'});
-	//Y-Axis
-	ticks.append("line")
-			.attr("y1", 0)
-			.attr("y2", h)
-			.style("stroke", "#000");
-}
-function createBubbleChart(data){
-	var r=300
-		, layout_gravity = 0.12
-		, damper = 0.1
-		, center = {
-				x: 0,
-				y: r / 2
-			}
-		, dataBySize=data.log.entries.map(function(x){return x.response.bodySize})
-		, dataByContentType=data.log.entries.map(function(x){return x.mimeType}).filter(function (e, i, arr) {
-				return arr.lastIndexOf(e) === i;
-			})
-		, colorScale=d3.scale.category10().domain(dataByContentType).range()
-		, mag = d3.scale.linear().domain([0, d3.max(dataBySize)]).rangeRound([5, 50])//magnitude
-		, magCharge = d3.scale.linear().domain([0, d3.max(dataBySize)]).rangeRound([-30, -10])//magnitude
-		, svg=d3
-			.select('#contentBubbles')
-			.append('svg')
-			.attr("class", "bubblechart")
-			.attr("width", r)
-			.attr("height", r)
-		, force = d3.layout.force()
-			.nodes(data.log.entries)
-			.size([r, r])
-			.linkDistance(10)
-			.gravity(layout_gravity)
-			.charge(function(d,i){return -Math.pow(mag(d.response.bodySize), 2.0)/8})
-			.friction(0.9)
-			.on("tick", tick)
-		, nodes = force.nodes()
-		, links = force.links()
-		, node = svg.selectAll(".node")
-		, link = svg.selectAll(".link");
-		d3.select('#contentBubblesContainer').style('display','block');
-	restart();
-	function showTooltip(d,i){
-		var tooltip=d3.select("div.tooltipBubble")
-		var item=data.log.entries[i];
-		tooltip.transition()
-				.duration(200)
-				.style("opacity", .9);
-		tooltip.html('<strong>'+item.request.url+'</strong><br/>'+
-						'contentType:&nbsp;'+item.mimeType+'<br/>'+
-						'blocking:&nbsp;'+item.timings.blocked+'ms<br/>'+
-						'latency:&nbsp;'+item.timings.wait+'ms<br/>'+
-						'download time:&nbsp;'+item.timings.receive+'ms<br/>'+
-						'total:&nbsp;'+item.timings.lifetime+'ms<br/>'+
-						'size:&nbsp;'+item.response.bodySize+' bytes<br/>'
-				)
-				.style("left", (d3.event.pageX) + "px")
-				.style("top", (d3.event.pageY - 28) + "px");
-		//})
-	}
-	function hideTooltip(d,i){
-		d3.select("div.tooltipBubble").transition()
-				.duration(500)
-				.style("opacity", 0);
-	}
+    <div class="row">
+      <div class="large-12 columns">
+        <div class="panel">
+          <h3 id="title">View waterfall and bouncy ball reports for your app</h3>
+          <!-- <p>To play along, clone <a href="https://github.com/r3b/speedreport">github.com/r3b/speedreport</a> and run speedreport.js against your app, Then come back here to play with the results!</p>
+          <p>Or, you can add your URL and email address to the queue and we'll email you when it's done.</p> -->
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="large-3 columns">&nbsp;</div>
+      <div class="large-4 columns">
+      </div>
+      <div class="large-3 columns">&nbsp;</div>
+    </div>
+    <div class="row">
+      <div class="large-8 medium-8 columns">
+          <div class="panel">
+            <div id="barGraphContainer">
+              <h3>Request lifecycle</h3>
+              <div id="barGraph">
+                Analyzing...
+              </div>
+            </div>
+          </div>
+      </div>
+      <div class="large-4 medium-4 columns">
+        <div class="row">
+          <div class="panel">
+            <h3>Size and content type</h3>
+            <div id="contentBubbles"></div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="panel">
+            <div class="row">
+              <p>We'll test your URL and email you when it's done.</p>
+            </div>
+            <div class="row">
+              <div class="medium-3 columns"><label for="url">URL</label></div>
+              <input type="url" id="url" name="url" placeholder="yourdomain.com">
+            </div>
+            <div class="row">
+              <div class="medium-3 columns"><label for="email">Email</label></div>
+                <input type="email" id="email" name="email" placeholder="email@yourdomain.com">
+                <a id="signup" href="javascript:void(0)" class="button round" style="font-size:0.8em;color:black;background:#ef2b2b;border-radius:1000px;border:1px solid #ef2b2b;">Go!</a>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div id="tooltip"></div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="large-4 medium-4 columns">
+      </div>
+    </div>
 
-	function tick(e) {
-		link.attr("x1", function(d) { return d.source.x; })
-				.attr("y1", function(d) { return d.source.y; })
-				.attr("x2", function(d) { return d.target.x; })
-				.attr("y2", function(d) { return d.target.y; });
+    <script src="js/promise.js"></script>
+    <script src="js/ajax.js"></script>
+    <script src="js/d3.v3.min.js"></script>
+    <script src="js/report.js"></script>
+    <script src="js/signup.js"></script>
 
-		node
-				.attr("x", function(d){return d.x + (center.x - d.x) * (damper + 0.02) * e.alpha * 1.1})
-				.attr("y", function(d){return d.y + (center.y - d.y) * (damper + 0.02) * e.alpha * 1.1})
-				.attr("cx", function(d) { return d.x; })
-				.attr("cy", function(d) { return d.y; });
+    <script src="js/vendor/jquery.js"></script>
+    <script src="js/foundation.min.js"></script>
+    <script>
+      $(document).foundation();
+    </script>
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
 
-	}
+      ga('create', 'UA-42123580-1', 'auto');
+      ga('send', 'pageview');
 
-	function restart() {
-		link = link.data(links);
-		link.enter().insert("line", ".node")
-			.attr("class", "link");
-		node = node.data(nodes);
-		node.enter()
-			.insert("circle", ".cursor")
-			.attr("class", "node")
-			.attr("r", function(d){return mag(d.response.bodySize)})
-			.attr("fill", function(d,i){return colorScale[dataByContentType.indexOf(d.mimeType)]})
-			.attr("stroke", 'black')
-			.on('mouseover',showTooltip)
-			.on('mouseout',hideTooltip)
-			.call(force.drag);
-		force.start();
-	}
-}
-var uuidValueRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-function isUUID(uuid) {
-	return (!uuid)?false:uuidValueRegex.test(uuid);
-}
-var BASE='http://api.usergrid.com/rbridges/speedreport/reports';
-var id=location.search.substring(1);
-if(id){
-	Ajax.get(BASE+'/'+id).then(function(err, response){
-		var response_data=JSON.parse(response.responseText);
-		response_data=response_data.entities[0];
-		response_data.assets=response_data.log.entries;
-		var data=normalizeReportData(response_data)
-			, tooltip = d3.select("body").append("div")
-				.attr("class", "tooltip")
-				.style("opacity", 0)
-			, tooltipBubble = d3.select("body").append("div")
-				.attr("class", "tooltipBubble")
-				.style("opacity", 0);
-		createBarGraph(data);
-		createBubbleChart(data);
-	})
-}else{
-	location.replace("index.html")
-}
-
-</script>
-<script>
-  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
-  ga('create', 'UA-42123580-1', 'auto');
-  ga('send', 'pageview');
-
-</script>
-</body>
+    </script>
+  </body>
 </html>
