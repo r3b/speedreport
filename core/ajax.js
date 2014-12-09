@@ -48,7 +48,7 @@
                     if("object"===typeof d){
                         d=JSON.stringify(d);
                     }
-                    console.log("Data length:",d.length);a
+                    console.log("Data length:",d.length);
                     xhr.setRequestHeader("Content-Type", "application/json");
                     xhr.setRequestHeader("Accept", "application/json");
                 }
